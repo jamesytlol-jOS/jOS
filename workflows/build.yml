@@ -1,0 +1,49 @@
+name: jOS Build System
+on: 
+  workflow_dispatch: # Allows you to start the build manually
+
+jobs:
+  build-jos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-11-jdk python3 git-core gnupg flex bison gperf build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip
+
+      - name: Set up jOS Branding (iPhoneOS 1 Style)
+        run: |
+          echo "Applying iPhoneOS 1 UI modifications..."
+          # This command searches for the default Android wallpaper and replaces it
+          # You would need to have 'ios1_wallpaper.jpg' in your repository
+          find . -name "default_wallpaper.jpg" -exec cp assets/ios1_wallpaper.jpg {} \;
+          
+          # Script to modify the UI corner radius to look more like old iOS
+          find . -name "config.xml" -exec sed -i 's/rounded_corner_radius/0px/g' {} \;
+
+      - name: Inject .jah File Support
+        run: |
+          echo "Modifying Package Manager for .jah support..."
+          # This tells the system to treat .jah files as installable archives
+          find frameworks/base -name "AndroidManifest.xml" -exec sed -i 's/\.apk/\.jah/g' {} \;
+          
+          # Add the .jah mime-type to the system global config
+          echo "Adding .jah to MimeTypes..."
+          sed -i '/<package-types>/a <type extension=".jah" mimetype="application/vnd.android.package-archive"/>' frameworks/base/core/res/res/values/config.xml
+
+      - name: Initialize J-Store
+        run: |
+          echo "Setting up J-Store placeholder..."
+          # This creates a folder structure for your custom app store
+          mkdir -p packages/apps/JStore
+          # In a real build, you would pull your J-Store code here via git clone
+
+      - name: Compile jOS
+        run: |
+          echo "Starting compilation... (Note: Full AOSP builds often exceed GitHub's free time limit)"
+          # source build/envsetup.sh
+          # lunch aosp_arm64-userdebug
+          # make -j$(nproc) systemimage
